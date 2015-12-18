@@ -1,0 +1,6 @@
+*.cov
+cov.html
+/git.count
+/git.revision
+/version.txt
+/*.deb
