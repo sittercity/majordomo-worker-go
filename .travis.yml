@@ -1,0 +1,9 @@
+language: go
+install:
+  - mv $HOME/gopath/src/git.sittercity.com/core-services/majordomo-worker-go $HOME/gopath/src/git.sittercity.com/core-services/majordomo-worker-go.git
+  - go get golang.org/x/tools/cmd/cover
+  - go get golang.org/x/tools/cmd/vet
+script:
+  - make test
+go:
+  - 1.4
