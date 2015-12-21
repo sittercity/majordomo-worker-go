@@ -1,7 +1,7 @@
 package majordomo_worker
 
 import (
-	"github.com/pebbe/zmq4"
+	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 )
 
 func createWorker(ctx *zmq4.Context, brokerAddress, serviceName string, heartbeat, reconnect, pollInterval, heartbeatLiveness int, action WorkerAction) *mdWorker {

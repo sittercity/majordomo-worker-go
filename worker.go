@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/pebbe/zmq4"
+	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/Sirupsen/logrus"
+	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 )
 
 const (

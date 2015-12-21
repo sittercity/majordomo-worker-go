@@ -3,7 +3,7 @@ package majordomo_worker
 import (
 	"syscall"
 
-	"github.com/pebbe/zmq4"
+	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 )
 
 func createBroker() testBroker {
