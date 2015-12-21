@@ -27,17 +27,18 @@ type Worker interface {
 	Receive() ([][]byte, error)
 }
 
-func newWorker(context *zmq4.Context, brokerAddress, serviceName string, heartbeatInMillis, reconnectInMillis, pollInterval, heartbeatLiveness int, action WorkerAction) *mdWorker {
+func newWorker(context *zmq4.Context, brokerAddress, serviceName string, heartbeatInMillis, reconnectInMillis, pollInterval, maxLivenessCount int, action WorkerAction) *mdWorker {
 	w := &mdWorker{
-		brokerAddress: brokerAddress,
-		serviceName:   serviceName,
-		heartbeat:     time.Duration(heartbeatInMillis) * time.Millisecond,
-		reconnect:     time.Duration(reconnectInMillis) * time.Millisecond,
-		pollInterval:  time.Duration(pollInterval) * time.Millisecond,
-		context:       context,
-		liveness:      heartbeatLiveness,
-		workerAction:  action,
-		shutdown:      make(chan bool),
+		brokerAddress:    brokerAddress,
+		serviceName:      serviceName,
+		heartbeat:        time.Duration(heartbeatInMillis) * time.Millisecond,
+		reconnect:        time.Duration(reconnectInMillis) * time.Millisecond,
+		pollInterval:     time.Duration(pollInterval) * time.Millisecond,
+		context:          context,
+		maxLivenessCount: maxLivenessCount,
+		liveness:         0,
+		workerAction:     action,
+		shutdown:         make(chan bool),
 	}
 
 	w.reconnectToBroker()
@@ -50,11 +51,12 @@ type mdWorker struct {
 	brokerAddress string
 	serviceName   string
 
-	heartbeat    time.Duration
-	reconnect    time.Duration
-	pollInterval time.Duration
-	liveness     int
-	heartbeatAt  time.Time
+	heartbeat        time.Duration
+	reconnect        time.Duration
+	pollInterval     time.Duration
+	maxLivenessCount int
+	liveness         int
+	heartbeatAt      time.Time
 
 	socket  *zmq4.Socket
 	context *zmq4.Context
@@ -73,13 +75,25 @@ func (w *mdWorker) reconnectToBroker() (err error) {
 
 	w.sendToBroker(MD_READY, []byte(w.serviceName), nil)
 
+	w.liveness = w.maxLivenessCount
 	w.heartbeatAt = time.Now().Add(w.heartbeat)
 
 	return
 }
 
 func (w *mdWorker) sendToBroker(command string, serviceName []byte, msg [][]byte) error {
-	_, err := w.socket.SendMessage("", []byte(MD_WORKER), []byte(command), serviceName, msg)
+	workerMessage := [][]byte{[]byte(""), []byte(MD_WORKER), []byte(command)}
+
+	if serviceName != nil {
+		workerMessage = append(workerMessage, serviceName)
+	}
+
+	if msg != nil {
+		workerMessage = append(workerMessage, msg...)
+	}
+
+	_, err := w.socket.SendMessage(workerMessage)
+
 	return err
 }
 
@@ -115,17 +129,14 @@ func (w *mdWorker) Receive() (msg [][]byte, err error) {
 			if len(polled) > 0 {
 				msg, _ = w.socket.RecvMessageBytes(0)
 
-				w.liveness = HEARTBEAT_LIVENESS
-
 				if len(msg) < 3 {
 					continue // ignore invalid messages
 				}
 
-				w.liveness = HEARTBEAT_LIVENESS
+				w.liveness = w.maxLivenessCount
 
 				switch command := string(msg[2]); command {
 				case MD_REQUEST:
-					logrus.Info("Got a request!")
 					replyTo := msg[3]
 
 					actionResponse := w.workerAction.Call(msg[5:])
@@ -137,13 +148,10 @@ func (w *mdWorker) Receive() (msg [][]byte, err error) {
 					msg = actionResponse
 					return
 				case MD_DISCONNECT:
-					logrus.Info("Got a disconnect from the broker")
 					w.reconnectToBroker() // Initiate a reconnect, which basically resets the connection
 				case MD_HEARTBEAT:
-					logrus.Info("Got a heartbeat from the broker")
 					// Do nothing, ANY message coming in acts as a heartbeat so we handle it above
 				default:
-					logrus.Info("Got something unexpected")
 					// Do nothing, if we received something we don't recognize we'll just ignore it
 				}
 			} else if w.liveness--; w.liveness <= 0 {

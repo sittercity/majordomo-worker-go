@@ -6,12 +6,7 @@ import (
 	"github.com/pebbe/zmq4"
 )
 
-const (
-	POLLING_INTERVAL   = 100
-	HEARTBEAT_LIVENESS = 50
-)
-
-func NewWorker(brokerAddress, serviceName string, heartbeatInMillis, reconnectInMillis int, action WorkerAction) Worker {
+func NewWorker(brokerAddress, serviceName string, heartbeatInMillis, reconnectInMillis, pollingInterval, maxHeartbeatLiveness int, action WorkerAction) Worker {
 	context, _ := zmq4.NewContext()
 
 	worker := newWorker(
@@ -20,8 +15,8 @@ func NewWorker(brokerAddress, serviceName string, heartbeatInMillis, reconnectIn
 		serviceName,
 		heartbeatInMillis,
 		reconnectInMillis,
-		POLLING_INTERVAL,
-		HEARTBEAT_LIVENESS,
+		pollingInterval,
+		maxHeartbeatLiveness,
 		action,
 	)
 

@@ -116,7 +116,7 @@ func (s *WorkerTestSuite) Test_Receive_SendsHeartbeatIfThresholdHit() {
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
-	// Give a high reconnect so we definitely trigger the heartbeat here
+	// Give a low heartbeat values so we definitely trigger it
 	worker := s.createWorker(1, 10000, s.defaultAction)
 	go worker.Receive()
 
@@ -131,6 +131,8 @@ func (s *WorkerTestSuite) Test_Receive_SendsHeartbeatIfThresholdHit() {
 		s.Equal([]byte(MD_WORKER), workerMsg[2])
 		s.Equal([]byte(MD_HEARTBEAT), workerMsg[3])
 	}
+
+	s.Equal(4, len(workerMsg))
 
 	broker.shutdown <- struct{}{}
 	worker.cleanup()
