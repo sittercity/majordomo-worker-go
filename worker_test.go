@@ -14,6 +14,7 @@ type WorkerTestSuite struct {
 
 	brokerAddress, serviceName           string
 	heartbeatInMillis, reconnectInMillis int
+	pollInterval, heartbeatLiveness      int
 
 	defaultAction WorkerAction
 }
@@ -27,8 +28,10 @@ func (s *WorkerTestSuite) SetupTest() {
 
 	s.brokerAddress = "inproc://test-worker"
 	s.serviceName = "test-service"
-	s.heartbeatInMillis = 25
-	s.reconnectInMillis = 25
+	s.heartbeatInMillis = 50
+	s.reconnectInMillis = 50
+	s.pollInterval = 10
+	s.heartbeatLiveness = 5
 
 	s.defaultAction = defaultWorkerAction{}
 }
@@ -44,6 +47,8 @@ func (s *WorkerTestSuite) createWorker(heartbeat, reconnect int, action WorkerAc
 		s.serviceName,
 		heartbeat,
 		reconnect,
+		s.pollInterval,
+		s.heartbeatLiveness,
 		action,
 	)
 }
@@ -52,7 +57,8 @@ func (s *WorkerTestSuite) Test_Receive_DoesNothingExplicitWithHeartbeat() {
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
-	worker := s.createWorker(s.heartbeatInMillis, s.reconnectInMillis, s.defaultAction)
+	// Set the specific durations so we don't run into race conditions for this specific test
+	worker := s.createWorker(5000, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
 
 	sendWorkerMessage(broker, MD_HEARTBEAT)
@@ -71,7 +77,7 @@ func (s *WorkerTestSuite) Test_Receive_DoesNothingExplicitWithHeartbeat() {
 	}
 
 	broker.shutdown <- struct{}{}
-	worker.Close()
+	worker.cleanup()
 }
 
 func (s *WorkerTestSuite) Test_Receive_IgnoresInvalidMessages() {
@@ -103,7 +109,7 @@ func (s *WorkerTestSuite) Test_Receive_IgnoresInvalidMessages() {
 	}
 
 	broker.shutdown <- struct{}{}
-	worker.Close()
+	worker.cleanup()
 }
 
 func (s *WorkerTestSuite) Test_Receive_SendsHeartbeatIfThresholdHit() {
@@ -127,7 +133,7 @@ func (s *WorkerTestSuite) Test_Receive_SendsHeartbeatIfThresholdHit() {
 	}
 
 	broker.shutdown <- struct{}{}
-	worker.Close()
+	worker.cleanup()
 }
 
 func (s *WorkerTestSuite) Test_Receive_CallsActionIfRequest() {
@@ -138,9 +144,9 @@ func (s *WorkerTestSuite) Test_Receive_CallsActionIfRequest() {
 	go broker.run(s.ctx, s.brokerAddress)
 
 	workerAction := funcWorkerAction{
-		call: func(args []string) []string {
+		call: func(args [][]byte) [][]byte {
 			actionCalled = true
-			s.Equal(expectedStr, args[0])
+			s.Equal([]byte(expectedStr), args[0])
 			return args
 		},
 	}
@@ -153,9 +159,8 @@ func (s *WorkerTestSuite) Test_Receive_CallsActionIfRequest() {
 
 	go worker.Receive()
 
-	var workerMsg [][]byte
-
 	// Listen and discard all READY commands, we don't care about them for this test
+	var workerMsg [][]byte
 	for {
 		broker.performReceive <- struct{}{}
 		workerMsg = <-broker.receivedFromWorker
@@ -177,7 +182,7 @@ func (s *WorkerTestSuite) Test_Receive_CallsActionIfRequest() {
 	s.True(actionCalled)
 
 	broker.shutdown <- struct{}{}
-	worker.Close()
+	worker.cleanup()
 }
 
 func TestWorkerTestSuite(t *testing.T) {

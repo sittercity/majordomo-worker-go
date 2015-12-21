@@ -34,7 +34,7 @@ func (s *WorkerConnectTestSuite) Test_Create_ContactsBroker() {
 	}
 
 	broker.shutdown <- struct{}{}
-	worker.Close()
+	worker.cleanup()
 }
 
 func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() {
@@ -66,7 +66,7 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() 
 	}
 
 	broker.shutdown <- struct{}{}
-	worker.Close()
+	worker.cleanup()
 }
 
 func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfNoBrokerMessageReceived() {
@@ -91,7 +91,7 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfNoBrokerMessageReceive
 	}
 
 	broker.shutdown <- struct{}{}
-	worker.Close()
+	worker.cleanup()
 }
 
 func TestWorkerConnectTestSuite(t *testing.T) {
