@@ -8,43 +8,6 @@ import (
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 )
 
-const (
-	MD_WORKER = "MDPW01"
-
-	MD_READY      = "\x01"
-	MD_REQUEST    = "\x02"
-	MD_REPLY      = "\x03"
-	MD_HEARTBEAT  = "\x04"
-	MD_DISCONNECT = "\x05"
-)
-
-type WorkerAction interface {
-	Call([][]byte) [][]byte
-}
-
-type Worker interface {
-	Shutdown()
-	Receive() ([][]byte, error)
-}
-
-func newWorker(context *zmq4.Context, brokerAddress, serviceName string, heartbeatInMillis, reconnectInMillis, pollInterval, maxLivenessCount int, action WorkerAction) *mdWorker {
-	w := &mdWorker{
-		brokerAddress:    brokerAddress,
-		serviceName:      serviceName,
-		heartbeat:        time.Duration(heartbeatInMillis) * time.Millisecond,
-		reconnect:        time.Duration(reconnectInMillis) * time.Millisecond,
-		pollInterval:     time.Duration(pollInterval) * time.Millisecond,
-		context:          context,
-		maxLivenessCount: maxLivenessCount,
-		liveness:         0,
-		workerAction:     action,
-		shutdown:         make(chan bool),
-	}
-
-	w.reconnectToBroker()
-	return w
-}
-
 type mdWorker struct {
 	shutdown chan bool
 
@@ -64,49 +27,22 @@ type mdWorker struct {
 	workerAction WorkerAction
 }
 
-func (w *mdWorker) reconnectToBroker() (err error) {
-	if w.socket != nil {
-		w.socket.Close()
+func newWorker(context *zmq4.Context, brokerAddress, serviceName string, heartbeatInMillis, reconnectInMillis, pollInterval, maxLivenessCount int, action WorkerAction) *mdWorker {
+	w := &mdWorker{
+		brokerAddress:    brokerAddress,
+		serviceName:      serviceName,
+		heartbeat:        time.Duration(heartbeatInMillis) * time.Millisecond,
+		reconnect:        time.Duration(reconnectInMillis) * time.Millisecond,
+		pollInterval:     time.Duration(pollInterval) * time.Millisecond,
+		context:          context,
+		maxLivenessCount: maxLivenessCount,
+		liveness:         0,
+		workerAction:     action,
+		shutdown:         make(chan bool),
 	}
 
-	w.socket, _ = w.context.NewSocket(zmq4.DEALER)
-	w.socket.SetLinger(0)
-	w.socket.Connect(w.brokerAddress)
-
-	w.sendToBroker(MD_READY, []byte(w.serviceName), nil)
-
-	w.liveness = w.maxLivenessCount
-	w.heartbeatAt = time.Now().Add(w.heartbeat)
-
-	return
-}
-
-func (w *mdWorker) sendToBroker(command string, serviceName []byte, msg [][]byte) error {
-	workerMessage := [][]byte{[]byte(""), []byte(MD_WORKER), []byte(command)}
-
-	if serviceName != nil {
-		workerMessage = append(workerMessage, serviceName)
-	}
-
-	if msg != nil {
-		workerMessage = append(workerMessage, msg...)
-	}
-
-	_, err := w.socket.SendMessage(workerMessage)
-
-	return err
-}
-
-func (w *mdWorker) Shutdown() {
-	logrus.Info("Performing graceful shutdown...")
-	w.shutdown <- true
-}
-
-func (w *mdWorker) cleanup() {
-	if w.socket != nil {
-		w.socket.Close()
-	}
-	w.context.Term()
+	w.reconnectToBroker()
+	return w
 }
 
 func (w *mdWorker) Receive() (msg [][]byte, err error) {
@@ -165,4 +101,49 @@ func (w *mdWorker) Receive() (msg [][]byte, err error) {
 			}
 		}
 	}
+}
+
+func (w *mdWorker) Shutdown() {
+	logrus.Info("Performing graceful shutdown...")
+	w.shutdown <- true
+}
+
+func (w *mdWorker) reconnectToBroker() (err error) {
+	if w.socket != nil {
+		w.socket.Close()
+	}
+
+	w.socket, _ = w.context.NewSocket(zmq4.DEALER)
+	w.socket.SetLinger(0)
+	w.socket.Connect(w.brokerAddress)
+
+	w.sendToBroker(MD_READY, []byte(w.serviceName), nil)
+
+	w.liveness = w.maxLivenessCount
+	w.heartbeatAt = time.Now().Add(w.heartbeat)
+
+	return
+}
+
+func (w *mdWorker) sendToBroker(command string, serviceName []byte, msg [][]byte) error {
+	workerMessage := [][]byte{[]byte(""), []byte(MD_WORKER), []byte(command)}
+
+	if serviceName != nil {
+		workerMessage = append(workerMessage, serviceName)
+	}
+
+	if msg != nil {
+		workerMessage = append(workerMessage, msg...)
+	}
+
+	_, err := w.socket.SendMessage(workerMessage)
+
+	return err
+}
+
+func (w *mdWorker) cleanup() {
+	if w.socket != nil {
+		w.socket.Close()
+	}
+	w.context.Term()
 }
