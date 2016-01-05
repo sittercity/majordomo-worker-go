@@ -26,9 +26,9 @@ To create a worker:
 worker := majordomo_worker.NewWorker(
   "tcp://broker-address",
   "service-name", // Unique, abstract service name for your client/worker pair
-  1000, // time to wait between heartbeats (in milliseconds)
-  1000, // time to sleep before reconnecting (in milliseconds)
-  500, // polling interval. This is how often we check the ZeroMQ socket (in milliseconds)
+  time.Duration(1000)*time.Millisecond, // time to wait between heartbeats
+  time.Duration(1000)*time.Millisecond, // time to sleep before reconnecting
+  time.Duration(500)*time.Millisecond, // polling interval. This is how often we check the ZeroMQ socket
   50, // max 'aliveness' count. This is the number of times we try to poll before deciding that the broker is dead if we haven't heard anything
   action, // an 'action' that matches the interface above
 )

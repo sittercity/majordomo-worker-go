@@ -27,13 +27,13 @@ type mdWorker struct {
 	workerAction WorkerAction
 }
 
-func newWorker(context *zmq4.Context, brokerAddress, serviceName string, heartbeatInMillis, reconnectInMillis, pollInterval, maxLivenessCount int, action WorkerAction) *mdWorker {
+func newWorker(context *zmq4.Context, brokerAddress, serviceName string, heartbeatInMillis, reconnectInMillis, pollInterval time.Duration, maxLivenessCount int, action WorkerAction) *mdWorker {
 	w := &mdWorker{
 		brokerAddress:    brokerAddress,
 		serviceName:      serviceName,
-		heartbeat:        time.Duration(heartbeatInMillis) * time.Millisecond,
-		reconnect:        time.Duration(reconnectInMillis) * time.Millisecond,
-		pollInterval:     time.Duration(pollInterval) * time.Millisecond,
+		heartbeat:        heartbeatInMillis,
+		reconnect:        reconnectInMillis,
+		pollInterval:     pollInterval,
 		context:          context,
 		maxLivenessCount: maxLivenessCount,
 		liveness:         0,
