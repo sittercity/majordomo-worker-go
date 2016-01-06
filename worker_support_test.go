@@ -7,17 +7,17 @@ import (
 )
 
 func createWorker(ctx *zmq4.Context, brokerAddress, serviceName string, heartbeat, reconnect, pollInterval, heartbeatLiveness int, action WorkerAction, logger Logger) *mdWorker {
-	return newWorker(
-		ctx,
-		brokerAddress,
-		serviceName,
-		time.Duration(heartbeat)*time.Millisecond,
-		time.Duration(reconnect)*time.Millisecond,
-		time.Duration(pollInterval)*time.Millisecond,
-		heartbeatLiveness,
-		action,
-		logger,
-	)
+	config := WorkerConfig{
+		BrokerAddress:        brokerAddress,
+		ServiceName:          serviceName,
+		HeartbeatInMillis:    time.Duration(heartbeat) * time.Millisecond,
+		ReconnectInMillis:    time.Duration(reconnect) * time.Millisecond,
+		PollingInterval:      time.Duration(pollInterval) * time.Millisecond,
+		MaxHeartbeatLiveness: heartbeatLiveness,
+		Action:               action,
+	}
+
+	return newWorker(ctx, logger, config)
 }
 
 func sendWorkerMessage(broker testBroker, command string, parts ...[]byte) {

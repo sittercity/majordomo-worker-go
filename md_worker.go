@@ -8,6 +8,13 @@ import (
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 )
 
+type WorkerConfig struct {
+	BrokerAddress, ServiceName                            string
+	HeartbeatInMillis, ReconnectInMillis, PollingInterval time.Duration
+	MaxHeartbeatLiveness                                  int
+	Action                                                WorkerAction
+}
+
 type mdWorker struct {
 	shutdown chan bool
 
@@ -28,17 +35,17 @@ type mdWorker struct {
 	logger       Logger
 }
 
-func newWorker(context *zmq4.Context, brokerAddress, serviceName string, heartbeatInMillis, reconnectInMillis, pollInterval time.Duration, maxLivenessCount int, action WorkerAction, logger Logger) *mdWorker {
+func newWorker(context *zmq4.Context, logger Logger, config WorkerConfig) *mdWorker {
 	w := &mdWorker{
-		brokerAddress:    brokerAddress,
-		serviceName:      serviceName,
-		heartbeat:        heartbeatInMillis,
-		reconnect:        reconnectInMillis,
-		pollInterval:     pollInterval,
 		context:          context,
-		maxLivenessCount: maxLivenessCount,
+		brokerAddress:    config.BrokerAddress,
+		serviceName:      config.ServiceName,
+		heartbeat:        config.HeartbeatInMillis,
+		reconnect:        config.ReconnectInMillis,
+		pollInterval:     config.PollingInterval,
+		maxLivenessCount: config.MaxHeartbeatLiveness,
 		liveness:         0,
-		workerAction:     action,
+		workerAction:     config.Action,
 		shutdown:         make(chan bool),
 		logger:           logger,
 	}

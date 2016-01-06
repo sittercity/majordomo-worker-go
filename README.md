@@ -20,18 +20,24 @@ type WorkerAction interface {
 
 You *must* provide an action for the worker to perform. You can have the action do whatever you want. You are responsible for handling all input and output. This package will handle all communication to and from the majordomo broker.
 
+In addition, the Majordomo worker requires a logger that conforms to the [GoKit Logger](https://github.com/go-kit/kit/tree/master/log) interface.
+
 To create a worker:
 
 ```go
-worker := majordomo_worker.NewWorker(
-  "tcp://broker-address",
-  "service-name", // Unique, abstract service name for your client/worker pair
-  1000*time.Millisecond, // time to wait between heartbeats
-  1000*time.Millisecond, // time to sleep before reconnecting
-  500*time.Millisecond, // polling interval. This is how often we check the ZeroMQ socket
-  50, // max 'aliveness' count. This is the number of times we try to poll before deciding that the broker is dead if we haven't heard anything
-  action, // an 'action' that matches the interface above
-)
+workerConfig := majordomo_worker.WorkerConfig{
+  BrokerAddress: "tcp://broker-address",
+  ServiceName: "service-name", // Unique, abstract service name for your client/worker pair
+  HeartbeatInMillis: 1000*time.Millisecond, // time to wait between heartbeats
+  ReconnectInMillis: 1000*time.Millisecond, // time to sleep before reconnecting
+  PollingInterval: 500*time.Millisecond, // polling interval. This is how often we check the ZeroMQ socket
+  MaxHeartbeatLiveness: 50, // max 'aliveness' count. This is the number of times we try to poll before deciding that the broker is dead if we haven't heard anything
+  Action: action, // an 'action' that matches the interface above
+}
+
+logger := ...<create your logger that matches the GoKit Logger interface>...
+
+worker := majordomo_worker.NewWorker(logger, workerConfig)
 ```
 
 You can then call the following:
