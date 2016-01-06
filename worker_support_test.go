@@ -6,7 +6,7 @@ import (
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 )
 
-func createWorker(ctx *zmq4.Context, brokerAddress, serviceName string, heartbeat, reconnect, pollInterval, heartbeatLiveness int, action WorkerAction) *mdWorker {
+func createWorker(ctx *zmq4.Context, brokerAddress, serviceName string, heartbeat, reconnect, pollInterval, heartbeatLiveness int, action WorkerAction, logger Logger) *mdWorker {
 	return newWorker(
 		ctx,
 		brokerAddress,
@@ -16,6 +16,7 @@ func createWorker(ctx *zmq4.Context, brokerAddress, serviceName string, heartbea
 		time.Duration(pollInterval)*time.Millisecond,
 		heartbeatLiveness,
 		action,
+		logger,
 	)
 }
 

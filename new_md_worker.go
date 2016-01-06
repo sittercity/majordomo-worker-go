@@ -8,7 +8,7 @@ import (
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 )
 
-func NewWorker(brokerAddress, serviceName string, heartbeatInMillis, reconnectInMillis, pollingInterval time.Duration, maxHeartbeatLiveness int, action WorkerAction) Worker {
+func NewWorker(brokerAddress, serviceName string, heartbeatInMillis, reconnectInMillis, pollingInterval time.Duration, maxHeartbeatLiveness int, action WorkerAction, logger Logger) Worker {
 	context, _ := zmq4.NewContext()
 
 	worker := newWorker(
@@ -20,6 +20,7 @@ func NewWorker(brokerAddress, serviceName string, heartbeatInMillis, reconnectIn
 		pollingInterval,
 		maxHeartbeatLiveness,
 		action,
+		logger,
 	)
 
 	return worker

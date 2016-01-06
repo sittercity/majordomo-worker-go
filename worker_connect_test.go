@@ -1,6 +1,7 @@
 package majordomo_worker
 
 import (
+	"fmt"
 	"testing"
 
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/stretchr/testify/suite"
@@ -31,6 +32,32 @@ func (s *WorkerConnectTestSuite) Test_Create_ContactsBroker() {
 		s.Equal([]byte(MD_WORKER), workerMsg[2])
 		s.Equal([]byte(MD_READY), workerMsg[3])
 		s.Equal([]byte(s.serviceName), workerMsg[4])
+	}
+
+	broker.shutdown <- struct{}{}
+	worker.cleanup()
+}
+
+func (s *WorkerConnectTestSuite) Test_Create_LogsConnectionAndReady() {
+	broker := createBroker()
+	go broker.run(s.ctx, s.brokerAddress)
+
+	// Set heartbeat high so we don't get those messages
+	worker := s.createWorker(100000, s.reconnectInMillis, s.defaultAction)
+
+	if s.NotEmpty(s.logger.debugs) {
+		s.Equal(
+			map[string]interface{}{"message": fmt.Sprintf("Attempting connection to broker at '%s'", s.brokerAddress)},
+			s.logger.debugs[0],
+		)
+		s.Equal(
+			map[string]interface{}{"message": fmt.Sprintf("Connected successfully to broker at '%s'", s.brokerAddress)},
+			s.logger.debugs[1],
+		)
+		s.Equal(
+			map[string]interface{}{"message": fmt.Sprintf("Sent command '%s' to broker with message '%q'", MD_READY, [][]byte{})},
+			s.logger.debugs[2],
+		)
 	}
 
 	broker.shutdown <- struct{}{}

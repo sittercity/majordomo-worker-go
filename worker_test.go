@@ -17,6 +17,7 @@ type WorkerTestSuite struct {
 	pollInterval, heartbeatLiveness      int
 
 	defaultAction WorkerAction
+	logger        *testLogger
 }
 
 func (s *WorkerTestSuite) SetupTest() {
@@ -34,6 +35,7 @@ func (s *WorkerTestSuite) SetupTest() {
 	s.heartbeatLiveness = 5
 
 	s.defaultAction = defaultWorkerAction{}
+	s.logger = new(testLogger)
 }
 
 func (s *WorkerTestSuite) TearDownTest() {
@@ -50,6 +52,7 @@ func (s *WorkerTestSuite) createWorker(heartbeat, reconnect int, action WorkerAc
 		s.pollInterval,
 		s.heartbeatLiveness,
 		action,
+		s.logger,
 	)
 }
 
@@ -90,6 +93,36 @@ func (s *WorkerTestSuite) Test_Receive_IgnoresInvalidMessages() {
 	// Invalid message, this should trigger no response from the worker
 	data := [][]byte{[]byte(nil)}
 	broker.sendToWorker <- data
+	go worker.Receive()
+
+	// We can ignore the first message for this test, it's the initial READY
+	broker.performReceive <- struct{}{}
+	<-broker.receivedFromWorker
+
+	// This disconnect should trigger a READY response
+	sendWorkerMessage(broker, MD_DISCONNECT)
+
+	broker.performReceive <- struct{}{}
+	workerMsg2 := <-broker.receivedFromWorker
+	if s.Equal([]byte(MD_READY), workerMsg2[3], "Expected second READY after the disconnect") {
+		s.Equal([]byte(""), workerMsg2[1])
+		s.Equal([]byte(MD_WORKER), workerMsg2[2])
+		s.Equal([]byte(MD_READY), workerMsg2[3])
+		s.Equal([]byte(s.serviceName), workerMsg2[4])
+	}
+
+	broker.shutdown <- struct{}{}
+	worker.cleanup()
+}
+
+func (s *WorkerTestSuite) Test_Receive_IgnoresInvalidCommand() {
+	broker := createBroker()
+	go broker.run(s.ctx, s.brokerAddress)
+
+	// Set high heartbeat/reconnect so we don't get HEARTBEAT/READY commands
+	worker := s.createWorker(10000, 10000, s.defaultAction)
+
+	sendWorkerMessage(broker, "\x06")
 	go worker.Receive()
 
 	// We can ignore the first message for this test, it's the initial READY
