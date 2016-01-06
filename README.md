@@ -77,8 +77,6 @@ heartbeating and reconnection settings. This is a target area for improvement.
 make test
 ```
 
-This also produces an HTML coverage report in the `reports` directory.
-
 ## Contributing
 
 We require 100% test coverage. Any PRs that do not follow 100% test coverage will be rejected.
