@@ -62,7 +62,7 @@ func (w *mdWorker) Receive() (msg [][]byte, err error) {
 
 			if err != nil {
 				logError(w.logger, fmt.Sprintf("Polling socket failed, error: %s", err.Error()))
-				return
+				continue
 			}
 
 			if len(polled) > 0 {
