@@ -1,6 +1,8 @@
 package majordomo_worker
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
@@ -27,12 +29,12 @@ func (s *WorkerTestSuite) SetupTest() {
 		panic(err)
 	}
 
-	s.brokerAddress = "inproc://test-worker"
+	s.brokerAddress = "inproc://test-worker" + fmt.Sprintf("%d", rand.Int())
 	s.serviceName = "test-service"
-	s.heartbeatInMillis = 50
+	s.heartbeatInMillis = 500
 	s.reconnectInMillis = 50
-	s.pollInterval = 10
-	s.heartbeatLiveness = 5
+	s.pollInterval = 500
+	s.heartbeatLiveness = 10
 
 	s.defaultAction = defaultWorkerAction{}
 	s.logger = new(testLogger)
@@ -117,8 +119,8 @@ func (s *WorkerTestSuite) Test_Receive_IgnoresInvalidCommand() {
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
-	// Set high heartbeat/reconnect so we don't get HEARTBEAT/READY commands
-	worker := s.createWorker(10000, 10000, s.defaultAction)
+	// Set high heartbeat so we don't get HEARTBEAT/READY commands
+	worker := s.createWorker(10000, 100, s.defaultAction)
 	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
@@ -183,7 +185,7 @@ func (s *WorkerTestSuite) Test_Receive_CallsActionIfRequest() {
 		},
 	}
 
-	worker := s.createWorker(2000, 2000, workerAction)
+	worker := s.createWorker(10000, s.reconnectInMillis, workerAction)
 	broker.performReceive <- struct{}{}
 	<-broker.receivedFromWorker // Get the initial READY and discard it
 	go worker.Receive()

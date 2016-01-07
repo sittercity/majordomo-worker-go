@@ -2,6 +2,7 @@ package majordomo_worker
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
@@ -28,12 +29,12 @@ func (s *WorkerConnectTestSuite) SetupTest() {
 		panic(err)
 	}
 
-	s.brokerAddress = "inproc://test-worker"
+	s.brokerAddress = "inproc://test-worker" + fmt.Sprintf("%d", rand.Int())
 	s.serviceName = "test-service"
-	s.heartbeatInMillis = 50
+	s.heartbeatInMillis = 500
 	s.reconnectInMillis = 50
-	s.pollInterval = 10
-	s.heartbeatLiveness = 5
+	s.pollInterval = 500
+	s.heartbeatLiveness = 10
 
 	s.defaultAction = defaultWorkerAction{}
 	s.logger = new(testLogger)
@@ -109,7 +110,8 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() 
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
-	worker := s.createWorker(s.heartbeatInMillis, s.reconnectInMillis, s.defaultAction)
+	// Set large heartbeat time so it doesn't cloud the READY
+	worker := s.createWorker(10000, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
@@ -141,7 +143,8 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfNoBrokerMessageReceive
 	go broker.run(s.ctx, s.brokerAddress)
 
 	// Use custom reconnect sleep time so the test is more efficient
-	worker := s.createWorker(s.heartbeatInMillis, 10, s.defaultAction)
+	// Also set large heartbeat so we don't cloud up the expected READY
+	worker := s.createWorker(10000, 10, s.defaultAction)
 	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
