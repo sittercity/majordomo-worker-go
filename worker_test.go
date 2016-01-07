@@ -61,16 +61,15 @@ func (s *WorkerTestSuite) Test_Receive_DoesNothingExplicitWithHeartbeat() {
 	go broker.run(s.ctx, s.brokerAddress)
 
 	// Set the specific durations so we don't run into race conditions for this specific test
-	worker := s.createWorker(5000, s.reconnectInMillis, s.defaultAction)
+	worker := s.createWorker(10000, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
+	go worker.Receive()
 
 	sendWorkerMessage(broker, MD_HEARTBEAT)
-	go worker.Receive()
+	broker.performReceive <- struct{}{}
 
 	// We can ignore the first message for this test, it's the initial READY
 	<-broker.receivedFromWorker
-
-	broker.performReceive <- struct{}{}
 	workerMsg2 := <-broker.receivedFromWorker
 	if s.Equal([]byte(MD_READY), workerMsg2[3], "Expected second READY after heartbeat") {
 		s.Equal([]byte(""), workerMsg2[1])
@@ -89,20 +88,19 @@ func (s *WorkerTestSuite) Test_Receive_IgnoresInvalidMessages() {
 
 	// Set high heartbeat/reconnect so we don't get HEARTBEAT/READY commands
 	worker := s.createWorker(10000, 10000, s.defaultAction)
+	broker.performReceive <- struct{}{}
+	go worker.Receive()
 
 	// Invalid message, this should trigger no response from the worker
 	data := [][]byte{[]byte(nil)}
 	broker.sendToWorker <- data
-	go worker.Receive()
-
-	// We can ignore the first message for this test, it's the initial READY
-	broker.performReceive <- struct{}{}
-	<-broker.receivedFromWorker
 
 	// This disconnect should trigger a READY response
 	sendWorkerMessage(broker, MD_DISCONNECT)
-
 	broker.performReceive <- struct{}{}
+
+	// We can ignore the first message for this test, it's the initial READY
+	<-broker.receivedFromWorker
 	workerMsg2 := <-broker.receivedFromWorker
 	if s.Equal([]byte(MD_READY), workerMsg2[3], "Expected second READY after the disconnect") {
 		s.Equal([]byte(""), workerMsg2[1])
@@ -121,18 +119,17 @@ func (s *WorkerTestSuite) Test_Receive_IgnoresInvalidCommand() {
 
 	// Set high heartbeat/reconnect so we don't get HEARTBEAT/READY commands
 	worker := s.createWorker(10000, 10000, s.defaultAction)
-
-	sendWorkerMessage(broker, "\x06")
+	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
-	// We can ignore the first message for this test, it's the initial READY
-	broker.performReceive <- struct{}{}
-	<-broker.receivedFromWorker
+	sendWorkerMessage(broker, "\x06")
 
 	// This disconnect should trigger a READY response
 	sendWorkerMessage(broker, MD_DISCONNECT)
-
 	broker.performReceive <- struct{}{}
+
+	// We can ignore the first message for this test, it's the initial READY
+	<-broker.receivedFromWorker
 	workerMsg2 := <-broker.receivedFromWorker
 	if s.Equal([]byte(MD_READY), workerMsg2[3], "Expected second READY after the disconnect") {
 		s.Equal([]byte(""), workerMsg2[1])
@@ -151,10 +148,10 @@ func (s *WorkerTestSuite) Test_Receive_SendsHeartbeatIfThresholdHit() {
 
 	// Give a low heartbeat values so we definitely trigger it
 	worker := s.createWorker(1, 10000, s.defaultAction)
+	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
 	// We can ignore the initial READY
-	broker.performReceive <- struct{}{}
 	<-broker.receivedFromWorker
 
 	broker.performReceive <- struct{}{}
@@ -189,10 +186,9 @@ func (s *WorkerTestSuite) Test_Receive_CallsActionIfRequest() {
 	worker := s.createWorker(2000, 2000, workerAction)
 	broker.performReceive <- struct{}{}
 	<-broker.receivedFromWorker // Get the initial READY and discard it
+	go worker.Receive()
 
 	sendWorkerMessage(broker, MD_REQUEST, []byte(s.serviceName), nil, []byte(expectedStr))
-
-	go worker.Receive()
 
 	// Listen and discard all READY commands, we don't care about them for this test
 	var workerMsg [][]byte

@@ -63,6 +63,7 @@ func (s *WorkerConnectTestSuite) Test_Create_ContactsBroker() {
 
 	worker := s.createWorker(s.heartbeatInMillis, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
+	go worker.Receive()
 
 	workerMsg := <-broker.receivedFromWorker
 	if s.Equal([]byte(MD_READY), workerMsg[3], "Expected READY") {
@@ -82,6 +83,8 @@ func (s *WorkerConnectTestSuite) Test_Create_LogsConnectionAndReady() {
 
 	// Set heartbeat high so we don't get those messages
 	worker := s.createWorker(100000, s.reconnectInMillis, s.defaultAction)
+	broker.performReceive <- struct{}{}
+	go worker.Receive()
 
 	if s.NotEmpty(s.logger.debugs) {
 		s.Equal(
@@ -108,10 +111,10 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() 
 
 	worker := s.createWorker(s.heartbeatInMillis, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
+	go worker.Receive()
 
 	sendWorkerMessage(broker, MD_DISCONNECT)
-
-	go worker.Receive()
+	broker.performReceive <- struct{}{}
 
 	workerMsg1 := <-broker.receivedFromWorker
 	if s.Equal([]byte(MD_READY), workerMsg1[3], "Expected first READY") {
@@ -121,7 +124,6 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() 
 		s.Equal([]byte(s.serviceName), workerMsg1[4])
 	}
 
-	broker.performReceive <- struct{}{}
 	workerMsg2 := <-broker.receivedFromWorker
 	if s.Equal([]byte(MD_READY), workerMsg2[3], "Expected second READY") {
 		s.Equal([]byte(""), workerMsg2[1])
@@ -138,14 +140,13 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfNoBrokerMessageReceive
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
-	worker := s.createWorker(s.heartbeatInMillis, s.reconnectInMillis, s.defaultAction)
+	// Use custom reconnect sleep time so the test is more efficient
+	worker := s.createWorker(s.heartbeatInMillis, 10, s.defaultAction)
 	broker.performReceive <- struct{}{}
-
 	go worker.Receive()
 
 	// We can ignore the first message for this test, it's the initial READY
 	<-broker.receivedFromWorker
-
 	broker.performReceive <- struct{}{}
 	workerMsg2 := <-broker.receivedFromWorker
 	if s.Equal([]byte(MD_READY), workerMsg2[3], "Expected second READY after timeout") {
