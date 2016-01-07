@@ -4,19 +4,57 @@ import (
 	"fmt"
 	"testing"
 
+	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/stretchr/testify/suite"
 )
 
 type WorkerConnectTestSuite struct {
-	WorkerTestSuite
+	suite.Suite
+
+	ctx *zmq4.Context
+
+	brokerAddress, serviceName           string
+	heartbeatInMillis, reconnectInMillis int
+	pollInterval, heartbeatLiveness      int
+
+	defaultAction WorkerAction
+	logger        *testLogger
 }
 
-func (suite *WorkerConnectTestSuite) SetupTest() {
-	suite.WorkerTestSuite.SetupTest()
+func (s *WorkerConnectTestSuite) SetupTest() {
+	var err error
+	s.ctx, err = zmq4.NewContext()
+	if err != nil {
+		panic(err)
+	}
+
+	s.brokerAddress = "inproc://test-worker"
+	s.serviceName = "test-service"
+	s.heartbeatInMillis = 50
+	s.reconnectInMillis = 50
+	s.pollInterval = 10
+	s.heartbeatLiveness = 5
+
+	s.defaultAction = defaultWorkerAction{}
+	s.logger = new(testLogger)
 }
 
-func (suite *WorkerConnectTestSuite) TearDownTest() {
-	suite.WorkerTestSuite.TearDownTest()
+func (s *WorkerConnectTestSuite) TearDownTest() {
+	s.ctx.Term()
+}
+
+func (s *WorkerConnectTestSuite) createWorker(heartbeat, reconnect int, action WorkerAction) *mdWorker {
+	return createWorker(
+		s.ctx,
+		s.brokerAddress,
+		s.serviceName,
+		heartbeat,
+		reconnect,
+		s.pollInterval,
+		s.heartbeatLiveness,
+		action,
+		s.logger,
+	)
 }
 
 func (s *WorkerConnectTestSuite) Test_Create_ContactsBroker() {
