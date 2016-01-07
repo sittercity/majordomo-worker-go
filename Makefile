@@ -12,7 +12,7 @@ default: test
 vet:
 	go vet ./...
 
-test: vet
+test:
 	@go list -f '{{.Dir}}/test.cov {{.ImportPath}}' ./ \
 			| while read coverage package ; do go test -tags test -coverprofile "$$coverage" "$$package" ; done \
 			| awk -W interactive '{ print } /^FAIL/ { failures++ } END { exit failures }' ;
