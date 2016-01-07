@@ -1,7 +1,6 @@
 package majordomo_worker
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -59,7 +58,7 @@ func (w *mdWorker) Receive() (msg [][]byte, err error) {
 		select {
 		case <-w.shutdown:
 			w.cleanup()
-			return msg, errors.New("Graceful shutdown")
+			return msg, GracefulShutdown("Graceful Shutdown")
 		default:
 			poll := zmq4.NewPoller()
 			poll.Add(w.socket, zmq4.POLLIN)
