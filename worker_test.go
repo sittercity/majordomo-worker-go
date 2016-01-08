@@ -1,9 +1,8 @@
 package majordomo_worker
 
 import (
-	"fmt"
-	"math/rand"
 	"testing"
+	"time"
 
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/stretchr/testify/suite"
@@ -29,11 +28,11 @@ func (s *WorkerTestSuite) SetupTest() {
 		panic(err)
 	}
 
-	s.brokerAddress = "inproc://test-worker" + fmt.Sprintf("%d", rand.Int())
+	s.brokerAddress = "inproc://test-worker"
 	s.serviceName = "test-service"
 	s.heartbeatInMillis = 500
 	s.reconnectInMillis = 50
-	s.pollInterval = 500
+	s.pollInterval = 250
 	s.heartbeatLiveness = 10
 
 	s.defaultAction = defaultWorkerAction{}
@@ -65,13 +64,16 @@ func (s *WorkerTestSuite) Test_Receive_DoesNothingExplicitWithHeartbeat() {
 	// Set the specific durations so we don't run into race conditions for this specific test
 	worker := s.createWorker(10000, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
-	go worker.Receive()
 
 	sendWorkerMessage(broker, MD_HEARTBEAT)
-	broker.performReceive <- struct{}{}
+	go worker.Receive()
+
+	time.Sleep(250) // Need to wait a little bit to make sure the poller gets the heartbeat
 
 	// We can ignore the first message for this test, it's the initial READY
 	<-broker.receivedFromWorker
+
+	broker.performReceive <- struct{}{}
 	workerMsg2 := <-broker.receivedFromWorker
 	if s.Equal([]byte(MD_READY), workerMsg2[3], "Expected second READY after heartbeat") {
 		s.Equal([]byte(""), workerMsg2[1])

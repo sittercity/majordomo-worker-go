@@ -2,7 +2,6 @@ package majordomo_worker
 
 import (
 	"fmt"
-	"math/rand"
 	"testing"
 
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
@@ -29,7 +28,7 @@ func (s *WorkerConnectTestSuite) SetupTest() {
 		panic(err)
 	}
 
-	s.brokerAddress = "inproc://test-worker" + fmt.Sprintf("%d", rand.Int())
+	s.brokerAddress = "inproc://test-worker"
 	s.serviceName = "test-service"
 	s.heartbeatInMillis = 500
 	s.reconnectInMillis = 50

@@ -96,7 +96,7 @@ func (w *mdWorker) Receive() (msg [][]byte, err error) {
 					return
 				case MD_DISCONNECT:
 					logDebug(w.logger, "Received MD_DISCONNECT from broker")
-					w.reconnectToBroker() // Initiate a reconnect, which basically resets the connection
+					w.reconnectToBroker() // Initiate a reconnect, which basically resets the socket connection
 				case MD_HEARTBEAT:
 					// Do nothing, ANY message coming in acts as a heartbeat so we handle it above
 					logDebug(w.logger, "Received MD_HEARTBEAT from broker")
