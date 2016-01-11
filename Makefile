@@ -12,10 +12,13 @@ default: test
 vet:
 	go vet ./...
 
-test: vet
-	mkdir -p reports/cov
-	go test -tags test -coverprofile reports/main.cov -v . > reports/main.txt
-	[ ! -f reports/main.cov ] || gocov convert reports/main.cov | gocov-html > reports/cov/main.html
+test:
+	@go list -f '{{.Dir}}/test.cov {{.ImportPath}}' ./ \
+			| while read coverage package ; do go test -tags test -coverprofile "$$coverage" "$$package" ; done \
+			| awk -W interactive '{ print } /^FAIL/ { failures++ } END { exit failures }' ;
+	@go list -f '{{.Dir}}/test.cov' ./ \
+ 			| while read coverage ; do go tool cover -func "$$coverage" ; done \
+			| awk '$$3 !~ /^100/ { print; gaps++ } END { exit gaps }' ;
 
 integration-test:
 

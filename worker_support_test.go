@@ -1,18 +1,23 @@
 package majordomo_worker
 
 import (
-	"github.com/pebbe/zmq4"
+	"time"
+
+	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 )
 
-func createWorker(ctx *zmq4.Context, brokerAddress, serviceName string, heartbeat, reconnect int, action WorkerAction) *mdWorker {
-	return newWorker(
-		ctx,
-		brokerAddress,
-		serviceName,
-		heartbeat,
-		reconnect,
-		action,
-	)
+func createWorker(ctx *zmq4.Context, brokerAddress, serviceName string, heartbeat, reconnect, pollInterval, heartbeatLiveness int, action WorkerAction, logger Logger) *mdWorker {
+	config := WorkerConfig{
+		BrokerAddress:        brokerAddress,
+		ServiceName:          serviceName,
+		HeartbeatInMillis:    time.Duration(heartbeat) * time.Millisecond,
+		ReconnectInMillis:    time.Duration(reconnect) * time.Millisecond,
+		PollingInterval:      time.Duration(pollInterval) * time.Millisecond,
+		MaxHeartbeatLiveness: heartbeatLiveness,
+		Action:               action,
+	}
+
+	return newWorker(ctx, logger, config)
 }
 
 func sendWorkerMessage(broker testBroker, command string, parts ...[]byte) {
@@ -24,14 +29,14 @@ func sendWorkerMessage(broker testBroker, command string, parts ...[]byte) {
 
 type defaultWorkerAction struct{}
 
-func (a defaultWorkerAction) Call(args []string) []string {
+func (a defaultWorkerAction) Call(args [][]byte) [][]byte {
 	return args
 }
 
 type funcWorkerAction struct {
-	call func([]string) []string
+	call func([][]byte) [][]byte
 }
 
-func (f funcWorkerAction) Call(args []string) []string {
+func (f funcWorkerAction) Call(args [][]byte) [][]byte {
 	return f.call(args)
 }

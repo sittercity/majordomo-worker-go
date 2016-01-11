@@ -1,0 +1,22 @@
+{
+	"ImportPath": "git.sittercity.com/core-services/majordomo-worker-go.git",
+	"GoVersion": "go1.4.1",
+	"Deps": [
+		{
+			"ImportPath": "github.com/pebbe/zmq4",
+			"Rev": "31dba2dadf451d949a4169b7dfe24f18ac903c4e"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Rev": "e4ec8152c15fc46bd5056ce65997a07c7d415325"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/require",
+			"Rev": "e4ec8152c15fc46bd5056ce65997a07c7d415325"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/suite",
+			"Rev": "e4ec8152c15fc46bd5056ce65997a07c7d415325"
+		}
+	]
+}
