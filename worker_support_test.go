@@ -32,6 +32,20 @@ func sendWorkerMessage(broker testBroker, command string, parts ...[]byte) {
 	broker.sendToWorker <- data
 }
 
+func readUntilNonHeartbeat(broker testBroker) [][]byte {
+	var workerMsg [][]byte
+	for {
+		broker.performReceive <- struct{}{}
+		workerMsg = <-broker.receivedFromWorker
+
+		if string(workerMsg[3]) != MD_HEARTBEAT {
+			break
+		}
+	}
+
+	return workerMsg
+}
+
 type defaultWorkerAction struct{}
 
 func (a defaultWorkerAction) Call(args [][]byte) [][]byte {

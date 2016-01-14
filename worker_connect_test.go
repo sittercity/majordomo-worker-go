@@ -126,7 +126,7 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() 
 		s.Equal([]byte(s.serviceName), workerMsg1[4])
 	}
 
-	workerMsg2 := <-broker.receivedFromWorker
+	workerMsg2 := readUntilNonHeartbeat(broker)
 	if s.Equal([]byte(MD_READY), workerMsg2[3], "Expected second READY") {
 		s.Equal([]byte(""), workerMsg2[1])
 		s.Equal([]byte(MD_WORKER), workerMsg2[2])
@@ -150,8 +150,8 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfNoBrokerMessageReceive
 
 	// We can ignore the first message for this test, it's the initial READY
 	<-broker.receivedFromWorker
-	broker.performReceive <- struct{}{}
-	workerMsg2 := <-broker.receivedFromWorker
+
+	workerMsg2 := readUntilNonHeartbeat(broker)
 	if s.Equal([]byte(MD_READY), workerMsg2[3], "Expected second READY after timeout") {
 		s.Equal([]byte(""), workerMsg2[1])
 		s.Equal([]byte(MD_WORKER), workerMsg2[2])
