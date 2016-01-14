@@ -61,9 +61,7 @@ func (s *WorkerTestSuite) Test_Receive_DoesNothingExplicitWithHeartbeat() {
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
-	// Set the specific durations so we don't run into race conditions for this specific test
-	worker := s.createWorker(5000, s.reconnectInMillis, s.defaultAction)
-	broker.performReceive <- struct{}{}
+	worker := s.createWorker(1000, s.reconnectInMillis, s.defaultAction)
 
 	sendWorkerMessage(broker, MD_HEARTBEAT)
 	go worker.Receive()
@@ -71,9 +69,13 @@ func (s *WorkerTestSuite) Test_Receive_DoesNothingExplicitWithHeartbeat() {
 	time.Sleep(250) // Need to wait a little bit to make sure the poller gets the heartbeat
 
 	// We can ignore the first message for this test, it's the initial READY
+	broker.performReceive <- struct{}{}
 	<-broker.receivedFromWorker
 
-	workerMsg := readUntilNonHeartbeat(broker)
+	sendWorkerMessage(broker, MD_DISCONNECT)
+
+	broker.performReceive <- struct{}{}
+	workerMsg := <-broker.receivedFromWorker
 	if s.Equal([]byte(MD_READY), workerMsg[3], "Expected second READY after heartbeat") {
 		s.Equal([]byte(""), workerMsg[1])
 		s.Equal([]byte(MD_WORKER), workerMsg[2])
@@ -89,8 +91,7 @@ func (s *WorkerTestSuite) Test_Receive_IgnoresInvalidMessages() {
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
-	// Set high heartbeat/reconnect so we don't get HEARTBEAT/READY commands
-	worker := s.createWorker(10000, 10000, s.defaultAction)
+	worker := s.createWorker(s.heartbeatInMillis, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
@@ -121,8 +122,7 @@ func (s *WorkerTestSuite) Test_Receive_IgnoresInvalidCommand() {
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
-	// Set high heartbeat so we don't get HEARTBEAT/READY commands
-	worker := s.createWorker(10000, 100, s.defaultAction)
+	worker := s.createWorker(s.heartbeatInMillis, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
@@ -152,7 +152,7 @@ func (s *WorkerTestSuite) Test_Receive_SendsHeartbeatIfThresholdHit() {
 	go broker.run(s.ctx, s.brokerAddress)
 
 	// Give a low heartbeat values so we definitely trigger it
-	worker := s.createWorker(1, 10000, s.defaultAction)
+	worker := s.createWorker(1, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
@@ -188,7 +188,7 @@ func (s *WorkerTestSuite) Test_Receive_CallsActionIfRequest() {
 		},
 	}
 
-	worker := s.createWorker(10000, s.reconnectInMillis, workerAction)
+	worker := s.createWorker(s.heartbeatInMillis, s.reconnectInMillis, workerAction)
 	broker.performReceive <- struct{}{}
 	<-broker.receivedFromWorker // Get the initial READY and discard it
 	go worker.Receive()

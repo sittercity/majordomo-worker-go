@@ -33,7 +33,7 @@ func (s *WorkerConnectTestSuite) SetupTest() {
 	s.serviceName = "test-service"
 	s.heartbeatInMillis = 500
 	s.reconnectInMillis = 50
-	s.pollInterval = 500
+	s.pollInterval = 250
 	s.heartbeatLiveness = 10
 
 	s.defaultAction = defaultWorkerAction{}
@@ -83,7 +83,7 @@ func (s *WorkerConnectTestSuite) Test_Create_LogsConnectionAndReady() {
 	go broker.run(s.ctx, s.brokerAddress)
 
 	// Set heartbeat high so we don't get those messages
-	worker := s.createWorker(100000, s.reconnectInMillis, s.defaultAction)
+	worker := s.createWorker(1000, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
@@ -111,7 +111,7 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() 
 	go broker.run(s.ctx, s.brokerAddress)
 
 	// Set large heartbeat time so it doesn't cloud the READY
-	worker := s.createWorker(10000, s.reconnectInMillis, s.defaultAction)
+	worker := s.createWorker(1000, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
@@ -144,7 +144,7 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfNoBrokerMessageReceive
 
 	// Use custom reconnect sleep time so the test is more efficient
 	// Also set large heartbeat so we don't cloud up the expected READY
-	worker := s.createWorker(10000, 10, s.defaultAction)
+	worker := s.createWorker(1000, 10, s.defaultAction)
 	broker.performReceive <- struct{}{}
 	go worker.Receive()
 

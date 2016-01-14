@@ -101,6 +101,7 @@ func (w *mdWorker) Receive() (msg [][]byte, err error) {
 					case MD_DISCONNECT:
 						logDebug(w.logger, "Received MD_DISCONNECT from broker")
 						polledWorkerSocket.connect(w.maxLivenessCount) // Initiate a reconnect
+						w.sendToBroker(polledWorkerSocket.socket, MD_READY, []byte(w.serviceName), nil)
 					case MD_HEARTBEAT:
 						// Do nothing, ANY message coming in acts as a heartbeat so we handle it above
 						logDebug(w.logger, "Received MD_HEARTBEAT from broker")
