@@ -3,6 +3,7 @@ package majordomo_worker
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/stretchr/testify/suite"
@@ -159,6 +160,23 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfNoBrokerMessageReceive
 	}
 
 	broker.shutdown <- struct{}{}
+	worker.cleanup()
+}
+
+func (s *WorkerConnectTestSuite) Test_Create_PanicsIfConnectionFails() {
+	config := WorkerConfig{
+		BrokerAddress:        "bad://some-bad-address",
+		ServiceName:          s.serviceName,
+		HeartbeatInMillis:    time.Duration(1) * time.Millisecond,
+		ReconnectInMillis:    time.Duration(1) * time.Millisecond,
+		PollingInterval:      time.Duration(1) * time.Millisecond,
+		MaxHeartbeatLiveness: 1,
+		Action:               s.defaultAction,
+	}
+
+	worker, err := newWorker(s.ctx, s.logger, config)
+	s.Error(err)
+
 	worker.cleanup()
 }
 

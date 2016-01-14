@@ -17,7 +17,12 @@ func createWorker(ctx *zmq4.Context, brokerAddress, serviceName string, heartbea
 		Action:               action,
 	}
 
-	return newWorker(ctx, logger, config)
+	w, err := newWorker(ctx, logger, config)
+	if err != nil {
+		panic(err)
+	}
+
+	return w
 }
 
 func sendWorkerMessage(broker testBroker, command string, parts ...[]byte) {

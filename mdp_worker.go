@@ -34,7 +34,7 @@ type mdWorker struct {
 	logger       Logger
 }
 
-func newWorker(context *zmq4.Context, logger Logger, config WorkerConfig) *mdWorker {
+func newWorker(context *zmq4.Context, logger Logger, config WorkerConfig) (*mdWorker, error) {
 	w := &mdWorker{
 		context:          context,
 		brokerAddress:    config.BrokerAddress,
@@ -49,8 +49,8 @@ func newWorker(context *zmq4.Context, logger Logger, config WorkerConfig) *mdWor
 		logger:           logger,
 	}
 
-	w.reconnectToBroker()
-	return w
+	err := w.reconnectToBroker()
+	return w, err
 }
 
 func (w *mdWorker) Receive() (msg [][]byte, err error) {
@@ -131,7 +131,13 @@ func (w *mdWorker) reconnectToBroker() (err error) {
 	logDebug(w.logger, fmt.Sprintf("Attempting connection to broker at '%s'", w.brokerAddress))
 	w.socket, _ = w.context.NewSocket(zmq4.DEALER)
 	w.socket.SetLinger(0)
-	w.socket.Connect(w.brokerAddress)
+	err = w.socket.Connect(w.brokerAddress)
+
+	if err != nil {
+		logError(w.logger, fmt.Sprintf("Error connecting to broker address '%s', error: '%s'", w.brokerAddress, err.Error()))
+		return err
+	}
+
 	logDebug(w.logger, fmt.Sprintf("Connected successfully to broker at '%s'", w.brokerAddress))
 
 	w.sendToBroker(MD_READY, []byte(w.serviceName), nil)
