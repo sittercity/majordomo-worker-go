@@ -62,7 +62,7 @@ func (s *WorkerTestSuite) Test_Receive_DoesNothingExplicitWithHeartbeat() {
 	go broker.run(s.ctx, s.brokerAddress)
 
 	// Set the specific durations so we don't run into race conditions for this specific test
-	worker := s.createWorker(10000, s.reconnectInMillis, s.defaultAction)
+	worker := s.createWorker(5000, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
 
 	sendWorkerMessage(broker, MD_HEARTBEAT)

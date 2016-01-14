@@ -93,11 +93,11 @@ func (s *WorkerConnectTestSuite) Test_Create_LogsConnectionAndReady() {
 			s.logger.debugs[0],
 		)
 		s.Equal(
-			map[string]interface{}{"message": fmt.Sprintf("Connected successfully to broker at '%s'", s.brokerAddress)},
+			map[string]interface{}{"message": fmt.Sprintf("Sent command '%s' to broker with message '%q'", MD_READY, [][]byte{})},
 			s.logger.debugs[1],
 		)
 		s.Equal(
-			map[string]interface{}{"message": fmt.Sprintf("Sent command '%s' to broker with message '%q'", MD_READY, [][]byte{})},
+			map[string]interface{}{"message": fmt.Sprintf("Connected successfully to broker at '%s'", s.brokerAddress)},
 			s.logger.debugs[2],
 		)
 	}
@@ -163,7 +163,7 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfNoBrokerMessageReceive
 	worker.cleanup()
 }
 
-func (s *WorkerConnectTestSuite) Test_Create_PanicsIfConnectionFails() {
+func (s *WorkerConnectTestSuite) Test_Create_ReturnErrorIfConnectionFails() {
 	config := WorkerConfig{
 		BrokerAddress:        "bad://some-bad-address",
 		ServiceName:          s.serviceName,
@@ -176,6 +176,24 @@ func (s *WorkerConnectTestSuite) Test_Create_PanicsIfConnectionFails() {
 
 	worker, err := newWorker(s.ctx, s.logger, config)
 	s.Error(err)
+
+	worker.cleanup()
+}
+
+func (s *WorkerConnectTestSuite) Test_Create_HandlesMultipleBrokerAddresses() {
+	config := WorkerConfig{
+		BrokerAddress:        "inproc://test-worker,inproc://test-worker",
+		ServiceName:          s.serviceName,
+		HeartbeatInMillis:    time.Duration(1) * time.Millisecond,
+		ReconnectInMillis:    time.Duration(1) * time.Millisecond,
+		PollingInterval:      time.Duration(1) * time.Millisecond,
+		MaxHeartbeatLiveness: 1,
+		Action:               s.defaultAction,
+	}
+
+	worker, err := newWorker(s.ctx, s.logger, config)
+	s.NoError(err)
+	s.Equal(2, len(worker.sockets))
 
 	worker.cleanup()
 }
