@@ -116,6 +116,7 @@ func (w *mdWorker) Receive() (msg [][]byte, err error) {
 						logWarn(w.logger, fmt.Sprintf("Worker at address '%s' has received nothing from the broker for %d polls, sleeping for %s and reconnecting", workerSocket.address, w.maxLivenessCount, w.reconnect))
 						time.Sleep(w.reconnect)
 						workerSocket.connect(w.maxLivenessCount)
+						w.sendToBroker(workerSocket.socket, MD_READY, []byte(w.serviceName), nil)
 					}
 				}
 			}

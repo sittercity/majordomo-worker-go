@@ -33,7 +33,7 @@ func (s *WorkerConnectTestSuite) SetupTest() {
 	s.serviceName = "test-service"
 	s.heartbeatInMillis = 500
 	s.reconnectInMillis = 50
-	s.pollInterval = 250
+	s.pollInterval = 10
 	s.heartbeatLiveness = 10
 
 	s.defaultAction = defaultWorkerAction{}
@@ -106,7 +106,7 @@ func (s *WorkerConnectTestSuite) Test_Create_LogsConnectionAndReady() {
 	worker.cleanup()
 }
 
-func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() {
+func (s *WorkerConnectTestSuite) Test_Create_ReconnectsIfDisconnnectReceived() {
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
@@ -138,17 +138,27 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() 
 	worker.cleanup()
 }
 
-func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfNoBrokerMessageReceived() {
+func (s *WorkerConnectTestSuite) Test_Create_ReconnectsIfNoBrokerMessageReceived() {
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
-	// Use custom reconnect sleep time so the test is more efficient
-	// Also set large heartbeat so we don't cloud up the expected READY
-	worker := s.createWorker(1000, 10, s.defaultAction)
-	broker.performReceive <- struct{}{}
+	config := WorkerConfig{
+		BrokerAddress:        s.brokerAddress,
+		ServiceName:          s.serviceName,
+		HeartbeatInMillis:    time.Duration(1000) * time.Millisecond,
+		ReconnectInMillis:    time.Duration(1) * time.Millisecond,
+		PollingInterval:      time.Duration(5) * time.Millisecond,
+		MaxHeartbeatLiveness: 1,
+		Action:               s.defaultAction,
+	}
+
+	worker, err := newWorker(s.ctx, s.logger, config)
+	s.NoError(err)
+
 	go worker.Receive()
 
 	// We can ignore the first message for this test, it's the initial READY
+	broker.performReceive <- struct{}{}
 	<-broker.receivedFromWorker
 
 	workerMsg2 := readUntilNonHeartbeat(broker)

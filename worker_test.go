@@ -2,7 +2,6 @@ package majordomo_worker
 
 import (
 	"testing"
-	"time"
 
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/stretchr/testify/suite"
@@ -62,20 +61,16 @@ func (s *WorkerTestSuite) Test_Receive_DoesNothingExplicitWithHeartbeat() {
 	go broker.run(s.ctx, s.brokerAddress)
 
 	worker := s.createWorker(1000, s.reconnectInMillis, s.defaultAction)
-
-	sendWorkerMessage(broker, MD_HEARTBEAT)
 	go worker.Receive()
-
-	time.Sleep(250) // Need to wait a little bit to make sure the poller gets the heartbeat
 
 	// We can ignore the first message for this test, it's the initial READY
 	broker.performReceive <- struct{}{}
 	<-broker.receivedFromWorker
 
+	sendWorkerMessage(broker, MD_HEARTBEAT)
 	sendWorkerMessage(broker, MD_DISCONNECT)
 
-	broker.performReceive <- struct{}{}
-	workerMsg := <-broker.receivedFromWorker
+	workerMsg := readUntilNonHeartbeat(broker)
 	if s.Equal([]byte(MD_READY), workerMsg[3], "Expected second READY after heartbeat") {
 		s.Equal([]byte(""), workerMsg[1])
 		s.Equal([]byte(MD_WORKER), workerMsg[2])
