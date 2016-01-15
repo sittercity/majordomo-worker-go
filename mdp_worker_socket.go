@@ -7,23 +7,24 @@ import (
 )
 
 type mdWorkerSocket struct {
-	context     *zmq4.Context
-	socket      *zmq4.Socket
-	address     string
-	liveness    int
-	heartbeatAt time.Time
-	logger      Logger
+	context               *zmq4.Context
+	socket                *zmq4.Socket
+	address               string
+	maxLiveness, liveness int
+	heartbeatAt           time.Time
+	logger                Logger
 }
 
-func createWorkerSocket(address string, context *zmq4.Context, liveness int, heartbeatAt time.Time, logger Logger) (mdWorkerSocket, error) {
+func createWorkerSocket(address string, context *zmq4.Context, maxLiveness int, heartbeatAt time.Time, logger Logger) (mdWorkerSocket, error) {
 	ws := mdWorkerSocket{
 		address:     address,
 		heartbeatAt: heartbeatAt,
 		context:     context,
 		logger:      logger,
+		maxLiveness: maxLiveness,
 	}
 
-	err := ws.connect(liveness)
+	err := ws.connect()
 	if err != nil {
 		return mdWorkerSocket{}, err
 	}
@@ -31,7 +32,7 @@ func createWorkerSocket(address string, context *zmq4.Context, liveness int, hea
 	return ws, nil
 }
 
-func (ws *mdWorkerSocket) connect(liveness int) error {
+func (ws *mdWorkerSocket) connect() error {
 	socket, _ := ws.context.NewSocket(zmq4.DEALER)
 	socket.SetLinger(0)
 
@@ -41,7 +42,7 @@ func (ws *mdWorkerSocket) connect(liveness int) error {
 	}
 
 	ws.socket = socket
-	ws.liveness = liveness
+	ws.liveness = ws.maxLiveness
 
 	return nil
 }

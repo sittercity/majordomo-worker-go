@@ -100,7 +100,7 @@ func (w *mdWorker) Receive() (msg [][]byte, err error) {
 						return
 					case MD_DISCONNECT:
 						logDebug(w.logger, "Received MD_DISCONNECT from broker")
-						polledWorkerSocket.connect(w.maxLivenessCount) // Initiate a reconnect
+						polledWorkerSocket.connect() // Initiate a reconnect
 						w.sendToBroker(polledWorkerSocket.socket, MD_READY, []byte(w.serviceName), nil)
 					case MD_HEARTBEAT:
 						// Do nothing, ANY message coming in acts as a heartbeat so we handle it above
@@ -115,7 +115,7 @@ func (w *mdWorker) Receive() (msg [][]byte, err error) {
 					if workerSocket.liveness--; workerSocket.liveness <= 0 {
 						logWarn(w.logger, fmt.Sprintf("Worker at address '%s' has received nothing from the broker for %d polls, sleeping for %s and reconnecting", workerSocket.address, w.maxLivenessCount, w.reconnect))
 						time.Sleep(w.reconnect)
-						workerSocket.connect(w.maxLivenessCount)
+						workerSocket.connect()
 						w.sendToBroker(workerSocket.socket, MD_READY, []byte(w.serviceName), nil)
 					}
 				}
