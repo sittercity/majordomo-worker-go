@@ -73,7 +73,7 @@ In the above example if the process receives a SIGTERM or SIGINT it will initiat
 It is possible to pass multiple broker addresses for workers to use. You *must* use the following format:
 
 ```
-tcp://broker-address1,tcp://broker-address1,tcp://broker-address3
+tcp://broker-address1,tcp://broker-address2
 ```
 
 ## Test
