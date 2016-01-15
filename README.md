@@ -26,7 +26,7 @@ To create a worker:
 
 ```go
 workerConfig := majordomo_worker.WorkerConfig{
-  BrokerAddress: "tcp://broker-address",
+  BrokerAddress: "tcp://broker-address", // See below for rules governing broker addresses
   ServiceName: "service-name", // Unique, abstract service name for your client/worker pair
   HeartbeatInMillis: 1000*time.Millisecond, // time to wait between heartbeats
   ReconnectInMillis: 1000*time.Millisecond, // time to sleep before reconnecting
@@ -67,6 +67,14 @@ You are responsible for managing any interrupts and calling the 'Shutdown()' met
 ```
 
 In the above example if the process receives a SIGTERM or SIGINT it will initiate a shutdown that will gracefully close the worker after the current request work is completed.
+
+### Broker addresses
+
+It is possible to pass multiple broker addresses for workers to use. You *must* use the following format:
+
+```
+tcp://broker-address1,tcp://broker-address1,tcp://broker-address3
+```
 
 ## Test
 

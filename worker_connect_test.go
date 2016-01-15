@@ -3,6 +3,7 @@ package majordomo_worker
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/stretchr/testify/suite"
@@ -32,7 +33,7 @@ func (s *WorkerConnectTestSuite) SetupTest() {
 	s.serviceName = "test-service"
 	s.heartbeatInMillis = 500
 	s.reconnectInMillis = 50
-	s.pollInterval = 500
+	s.pollInterval = 10
 	s.heartbeatLiveness = 10
 
 	s.defaultAction = defaultWorkerAction{}
@@ -82,7 +83,7 @@ func (s *WorkerConnectTestSuite) Test_Create_LogsConnectionAndReady() {
 	go broker.run(s.ctx, s.brokerAddress)
 
 	// Set heartbeat high so we don't get those messages
-	worker := s.createWorker(100000, s.reconnectInMillis, s.defaultAction)
+	worker := s.createWorker(1000, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
@@ -92,11 +93,11 @@ func (s *WorkerConnectTestSuite) Test_Create_LogsConnectionAndReady() {
 			s.logger.debugs[0],
 		)
 		s.Equal(
-			map[string]interface{}{"message": fmt.Sprintf("Connected successfully to broker at '%s'", s.brokerAddress)},
+			map[string]interface{}{"message": fmt.Sprintf("Sent command '%s' to broker with message '%q'", MD_READY, [][]byte{})},
 			s.logger.debugs[1],
 		)
 		s.Equal(
-			map[string]interface{}{"message": fmt.Sprintf("Sent command '%s' to broker with message '%q'", MD_READY, [][]byte{})},
+			map[string]interface{}{"message": fmt.Sprintf("Connected successfully to broker at '%s'", s.brokerAddress)},
 			s.logger.debugs[2],
 		)
 	}
@@ -105,12 +106,12 @@ func (s *WorkerConnectTestSuite) Test_Create_LogsConnectionAndReady() {
 	worker.cleanup()
 }
 
-func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() {
+func (s *WorkerConnectTestSuite) Test_Create_ReconnectsIfDisconnnectReceived() {
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
 	// Set large heartbeat time so it doesn't cloud the READY
-	worker := s.createWorker(10000, s.reconnectInMillis, s.defaultAction)
+	worker := s.createWorker(1000, s.reconnectInMillis, s.defaultAction)
 	broker.performReceive <- struct{}{}
 	go worker.Receive()
 
@@ -125,7 +126,7 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() 
 		s.Equal([]byte(s.serviceName), workerMsg1[4])
 	}
 
-	workerMsg2 := <-broker.receivedFromWorker
+	workerMsg2 := readUntilNonHeartbeat(broker)
 	if s.Equal([]byte(MD_READY), workerMsg2[3], "Expected second READY") {
 		s.Equal([]byte(""), workerMsg2[1])
 		s.Equal([]byte(MD_WORKER), workerMsg2[2])
@@ -137,20 +138,30 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfDisconnnectReceived() 
 	worker.cleanup()
 }
 
-func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfNoBrokerMessageReceived() {
+func (s *WorkerConnectTestSuite) Test_Create_ReconnectsIfNoBrokerMessageReceived() {
 	broker := createBroker()
 	go broker.run(s.ctx, s.brokerAddress)
 
-	// Use custom reconnect sleep time so the test is more efficient
-	// Also set large heartbeat so we don't cloud up the expected READY
-	worker := s.createWorker(10000, 10, s.defaultAction)
-	broker.performReceive <- struct{}{}
+	config := WorkerConfig{
+		BrokerAddress:        s.brokerAddress,
+		ServiceName:          s.serviceName,
+		HeartbeatInMillis:    time.Duration(1000) * time.Millisecond,
+		ReconnectInMillis:    time.Duration(1) * time.Millisecond,
+		PollingInterval:      time.Duration(5) * time.Millisecond,
+		MaxHeartbeatLiveness: 1,
+		Action:               s.defaultAction,
+	}
+
+	worker, err := newWorker(s.ctx, s.logger, config)
+	s.NoError(err)
+
 	go worker.Receive()
 
 	// We can ignore the first message for this test, it's the initial READY
-	<-broker.receivedFromWorker
 	broker.performReceive <- struct{}{}
-	workerMsg2 := <-broker.receivedFromWorker
+	<-broker.receivedFromWorker
+
+	workerMsg2 := readUntilNonHeartbeat(broker)
 	if s.Equal([]byte(MD_READY), workerMsg2[3], "Expected second READY after timeout") {
 		s.Equal([]byte(""), workerMsg2[1])
 		s.Equal([]byte(MD_WORKER), workerMsg2[2])
@@ -159,6 +170,41 @@ func (s *WorkerConnectTestSuite) Test_Receive_ReconnectsIfNoBrokerMessageReceive
 	}
 
 	broker.shutdown <- struct{}{}
+	worker.cleanup()
+}
+
+func (s *WorkerConnectTestSuite) Test_Create_ReturnErrorIfConnectionFails() {
+	config := WorkerConfig{
+		BrokerAddress:        "bad://some-bad-address",
+		ServiceName:          s.serviceName,
+		HeartbeatInMillis:    time.Duration(1) * time.Millisecond,
+		ReconnectInMillis:    time.Duration(1) * time.Millisecond,
+		PollingInterval:      time.Duration(1) * time.Millisecond,
+		MaxHeartbeatLiveness: 1,
+		Action:               s.defaultAction,
+	}
+
+	worker, err := newWorker(s.ctx, s.logger, config)
+	s.Error(err)
+
+	worker.cleanup()
+}
+
+func (s *WorkerConnectTestSuite) Test_Create_HandlesMultipleBrokerAddresses() {
+	config := WorkerConfig{
+		BrokerAddress:        "inproc://test-worker,inproc://test-worker",
+		ServiceName:          s.serviceName,
+		HeartbeatInMillis:    time.Duration(1) * time.Millisecond,
+		ReconnectInMillis:    time.Duration(1) * time.Millisecond,
+		PollingInterval:      time.Duration(1) * time.Millisecond,
+		MaxHeartbeatLiveness: 1,
+		Action:               s.defaultAction,
+	}
+
+	worker, err := newWorker(s.ctx, s.logger, config)
+	s.NoError(err)
+	s.Equal(2, len(worker.sockets))
+
 	worker.cleanup()
 }
 

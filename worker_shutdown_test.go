@@ -31,7 +31,7 @@ func (s *WorkerShutdownTestSuite) SetupTest() {
 	s.serviceName = "test-service"
 	s.heartbeatInMillis = 500
 	s.reconnectInMillis = 50
-	s.pollInterval = 500
+	s.pollInterval = 250
 	s.heartbeatLiveness = 10
 
 	s.defaultAction = defaultWorkerAction{}

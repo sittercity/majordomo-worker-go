@@ -17,7 +17,12 @@ func createWorker(ctx *zmq4.Context, brokerAddress, serviceName string, heartbea
 		Action:               action,
 	}
 
-	return newWorker(ctx, logger, config)
+	w, err := newWorker(ctx, logger, config)
+	if err != nil {
+		panic(err)
+	}
+
+	return w
 }
 
 func sendWorkerMessage(broker testBroker, command string, parts ...[]byte) {
@@ -25,6 +30,20 @@ func sendWorkerMessage(broker testBroker, command string, parts ...[]byte) {
 	data = append(data, parts...)
 
 	broker.sendToWorker <- data
+}
+
+func readUntilNonHeartbeat(broker testBroker) [][]byte {
+	var workerMsg [][]byte
+	for {
+		broker.performReceive <- struct{}{}
+		workerMsg = <-broker.receivedFromWorker
+
+		if string(workerMsg[3]) != MD_HEARTBEAT {
+			break
+		}
+	}
+
+	return workerMsg
 }
 
 type defaultWorkerAction struct{}
