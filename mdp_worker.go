@@ -8,13 +8,6 @@ import (
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
 )
 
-type WorkerConfig struct {
-	BrokerAddress, ServiceName                            string
-	HeartbeatInMillis, ReconnectInMillis, PollingInterval time.Duration
-	MaxHeartbeatLiveness                                  int
-	Action                                                WorkerAction
-}
-
 type mdWorker struct {
 	shutdown chan bool
 
@@ -137,8 +130,6 @@ func (w *mdWorker) Shutdown() {
 }
 
 func (w *mdWorker) connectToBroker() (err error) {
-	w.closeSockets()
-
 	addresses := strings.Split(w.brokerAddress, ",")
 
 	w.sockets = make([]mdWorkerSocket, 0)
@@ -194,14 +185,11 @@ func (w *mdWorker) findWorkerSocket(polledSocket *zmq4.Socket) mdWorkerSocket {
 	return foundWorkerSocket
 }
 
-func (w *mdWorker) closeSockets() {
+func (w *mdWorker) cleanup() {
 	for _, workerSocket := range w.sockets {
 		workerSocket.close()
 	}
-}
 
-func (w *mdWorker) cleanup() {
-	w.closeSockets()
 	w.context.Term()
 	logDebug(w.logger, "Worker socket and context closed successfully")
 }
