@@ -3,6 +3,7 @@ package majordomo_worker
 import (
 	"fmt"
 	"strings"
+	"syscall"
 	"time"
 
 	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
@@ -59,7 +60,15 @@ func (w *mdWorker) Receive() (msg [][]byte, err error) {
 			}
 
 			var polledSockets []zmq4.Polled
-			polledSockets, err = poller.Poll(w.pollInterval)
+
+			for {
+				polledSockets, err = poller.Poll(w.pollInterval)
+
+				if err != zmq4.Errno(syscall.EINTR) {
+					break
+				}
+
+			}
 
 			if err != nil {
 				logError(w.logger, fmt.Sprintf("Polling failed, error: %s", err.Error()))
