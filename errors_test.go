@@ -3,7 +3,7 @@ package majordomo_worker
 import (
 	"testing"
 
-	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_GracefulShutdown(t *testing.T) {

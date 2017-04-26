@@ -3,7 +3,7 @@
 package majordomo_worker
 
 import (
-	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
+	"github.com/pebbe/zmq4"
 )
 
 func NewWorker(logger Logger, config WorkerConfig) (Worker, error) {
