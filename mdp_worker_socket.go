@@ -3,7 +3,7 @@ package majordomo_worker
 import (
 	"time"
 
-	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
+	"github.com/pebbe/zmq4"
 )
 
 type mdWorkerSocket struct {

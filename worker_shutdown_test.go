@@ -3,8 +3,8 @@ package majordomo_worker
 import (
 	"testing"
 
-	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/pebbe/zmq4"
-	"git.sittercity.com/core-services/majordomo-worker-go.git/Godeps/_workspace/src/github.com/stretchr/testify/suite"
+	"github.com/pebbe/zmq4"
+	"github.com/stretchr/testify/suite"
 )
 
 type WorkerShutdownTestSuite struct {
