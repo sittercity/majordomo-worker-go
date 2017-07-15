@@ -81,13 +81,12 @@ tcp://broker-address1,tcp://broker-address2
 Right now tests are a little unoptimized. Tests could take up to 20 seconds due to various
 heartbeating and reconnection settings. This is a target area for improvement.
 
+We also are not at 100% coverage. PRs welcome!
+
 ```sh
 make test
 ```
 
 ## Contributing
 
-We require 100% test coverage. Any PRs that do not follow 100% test coverage will be rejected.
-
-Simply open a PR on your own fork to add the functionality you desire. As long as you have new tests
-to cover your new work then we'll be happy!
+Simply open a PR on your own fork to add the functionality you desire. As long as you have new tests to cover your new work then we'll be happy!
