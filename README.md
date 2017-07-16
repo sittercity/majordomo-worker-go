@@ -1,4 +1,4 @@
-## Majordomo Worker [![Build Status](https://travis-ci.org/ppeble/majordomo-worker-go.svg?branch=master)](https://travis-ci.org/ppeble/majordomo-worker-go)
+## Majordomo Worker [![Build Status](https://travis-ci.org/sittercity/majordomo-worker-go.svg?branch=master)](https://travis-ci.org/sittercity/majordomo-worker-go)
 
 Majordomo worker implementation. Written in Go.
 
